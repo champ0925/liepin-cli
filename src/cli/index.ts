@@ -6,9 +6,14 @@
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { config } from '../config.js';
-import { CdpBrowser } from '../browser/cdp_browser.js';
+import {
+  ensureBrowserSession,
+  getPageRef,
+  detachBrowserSession,
+} from '../browser/browser_session.js';
+import { withLiepinSessionLock } from '../common/liepin_session_lock.js';
 import { loginCommand } from '../toolset/login.js';
+import { statusCommand } from '../toolset/status.js';
 import { searchCommand } from '../toolset/search.js';
 import { chatlistCommand } from '../toolset/chatlist.js';
 import { chatmsgCommand } from '../toolset/chatmsg.js';
@@ -48,6 +53,7 @@ interface Command {
 /** 所有命令 */
 const commands: Command[] = [
   loginCommand,
+  statusCommand,
   searchCommand,
   chatlistCommand,
   chatmsgCommand,
@@ -58,6 +64,9 @@ const commands: Command[] = [
   joblistCommand,
   skillCommand,
 ];
+
+/** 不加会话锁的命令：login 要留浏览器等用户扫码，status 是只读检查 */
+const NO_LOCK_COMMANDS = new Set(['login', 'status', 'skill']);
 
 /** 显示帮助信息 */
 function showHelp(): void {
@@ -76,6 +85,8 @@ ${commands.map(cmd => `  ${cmd.name.padEnd(15)} ${cmd.description}`).join('\n')}
   --json          以 JSON 格式输出（AI Agent 友好）
 
 示例:
+  liepin login                              # 登录（浏览器保留供后续命令复用）
+  liepin status                             # 检查登录态（JSON）
   liepin search 前端工程师
   liepin search 前端工程师 --city 北京 --experience 3-5年
   liepin resume <简历ID>          # 简历ID 取自 search 结果的 resume_id
@@ -225,29 +236,43 @@ async function main(): Promise<void> {
   }
 
   const requiresPage = cmd.requiresPage !== false;
+  const useLock = !NO_LOCK_COMMANDS.has(command);
 
-  // 启动浏览器
-  const browser = requiresPage ? new CdpBrowser() : null;
-  let page: any = null;
+  /**
+   * 浏览器复用模式：通过 ensureBrowserSession 连接固定调试端口上的常驻 Chrome，
+   * 命令结束后只 detach（断 CDP）不关窗口，下一条命令直接复用。
+   * 非 login/status/skill 命令套会话锁防并发互踩。
+   */
+  const runCommand = async (): Promise<void> => {
+    let page: any = null;
+    try {
+      if (requiresPage) {
+        await ensureBrowserSession();
+        page = getPageRef();
+        if (!page) {
+          throw new Error('无法获取浏览器页面，请先运行 liepin login');
+        }
+      }
+
+      const result = await cmd.func(page, cmdOptions);
+      formatOutput(result, cmd.columns, options.json === true);
+    } finally {
+      // 只断 CDP，保留浏览器窗口供下一条命令复用
+      if (requiresPage) {
+        await detachBrowserSession();
+      }
+    }
+  };
 
   try {
-    if (browser) {
-      page = await browser.launch();
+    if (useLock) {
+      await withLiepinSessionLock(runCommand);
+    } else {
+      await runCommand();
     }
-
-    // 执行命令
-    const result = await cmd.func(page, cmdOptions);
-
-    // 格式化输出
-    formatOutput(result, cmd.columns, options.json === true);
   } catch (error) {
     console.error('错误:', error instanceof Error ? error.message : String(error));
     process.exit(1);
-  } finally {
-    // 关闭浏览器
-    if (browser) {
-      await browser.close();
-    }
   }
 }
 

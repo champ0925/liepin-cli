@@ -1,6 +1,6 @@
 {
-  "name": "@viyzhu/liepin-cli",
-  "version": "0.1.7",
+  "name": "@champ0925/liepin-cli",
+  "version": "0.2.0",
   "description": "猎聘自动化 CLI：批量发消息、自动打招呼、候选人管理、职位搜索。基于 Puppeteer/CDP 驱动本机 Chrome，支持 AI Agent 编排",
   "keywords": [
     "liepin",
@@ -20,13 +20,13 @@
     "候选人管理",
     "hr-tools"
   ],
-  "homepage": "https://github.com/Viy1204/liepin-cli#readme",
+  "homepage": "https://github.com/champ0925/liepin-cli#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Viy1204/liepin-cli.git"
+    "url": "git+https://github.com/champ0925/liepin-cli.git"
   },
   "bugs": {
-    "url": "https://github.com/Viy1204/liepin-cli/issues"
+    "url": "https://github.com/champ0925/liepin-cli/issues"
   },
   "type": "module",
   "main": "dist/cli/index.js",

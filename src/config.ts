@@ -4,7 +4,7 @@
 
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { existsSync, readFileSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync } from 'fs';
 import { homedir } from 'os';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -95,3 +95,23 @@ export function getConfig() {
 
 /** 配置实例 */
 export const config = getConfig();
+
+/** 应用数据根目录（登录态、锁、缓存统一放这里） */
+export const APP_DATA_DIR = config.configDir;
+
+/** 缓存目录（session.lock 等运行时状态） */
+export const CACHE_DIR = join(APP_DATA_DIR, '.cache');
+
+/** 浏览器用户数据目录（登录态由 Chrome Profile 持久化） */
+export const BROWSER_USER_DATA_DIR = config.userDataDir;
+
+/** 确保应用数据目录结构存在 */
+export function ensureAppDataLayout(): void {
+  for (const dir of [APP_DATA_DIR, CACHE_DIR, BROWSER_USER_DATA_DIR]) {
+    try {
+      if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+    } catch {
+      /* 目录创建失败不致命，后续用到时再报错 */
+    }
+  }
+}
