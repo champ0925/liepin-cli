@@ -28,6 +28,7 @@ import { baiduKeysCommand } from '../toolset/baidu_credentials.js';
 import { greetCommand } from '../toolset/greet.js';
 import { joblistCommand } from '../toolset/joblist.js';
 import { skillCommand } from '../toolset/skill.js';
+import { requestAttachmentResumeCommand, agreeResumeCommand } from '../toolset/attachment_action.js';
 
 /** 从包根 package.json 读取版本号（dist/cli/index.js -> ../../package.json） */
 const pkg = JSON.parse(
@@ -75,6 +76,8 @@ const commands: Command[] = [
   greetCommand,
   joblistCommand,
   skillCommand,
+  requestAttachmentResumeCommand,
+  agreeResumeCommand,
 ];
 
 /** 不加会话锁的命令：login 要留浏览器等用户扫码，status 是只读检查 */
