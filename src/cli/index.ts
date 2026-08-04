@@ -34,8 +34,8 @@ const pkg = JSON.parse(
 );
 
 /** 启动时加载百度 OCR 等凭证：先 ~/.liepin-cli/.env，再项目目录 .env（后者可覆盖） */
-loadEnv({ path: join(homedir(), '.liepin-cli', '.env') });
-loadEnv();
+loadEnv({ path: join(homedir(), '.liepin-cli', '.env'), quiet: true });
+loadEnv({ quiet: true });
 
 /** 命令定义 */
 interface Command {
