@@ -41,6 +41,18 @@ function pad(n: number): string {
   return String(n).padStart(2, '0');
 }
 
+/** 文件名时间戳：2026-08-04 17-45-56（与 boss-cli 统一） */
+function formatFileTimestamp(d: Date): string {
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}-${pad(d.getMinutes())}-${pad(d.getSeconds())}`;
+}
+
+/** 简历文件名片段：岗位-姓名（岗位缺省时只姓名） */
+function buildResumeNamePart(name: string, job: string): string {
+  const n = safeFileBase(name);
+  const j = job.trim() ? `${safeFileBase(job)}-` : '';
+  return `${j}${n}`;
+}
+
 export async function download(page: Page, options: DownloadOptions): Promise<any> {
   const { talentId } = options;
   if (!talentId) {
@@ -66,6 +78,8 @@ export async function download(page: Page, options: DownloadOptions): Promise<an
   const att = vo?.attachmentVo?.attachmentResume;
   const ask4Status = vo?.attachmentVo?.ask4AttachmentStatus;
   const name = vo?.baseInfo?.name || talentId;
+  // 文件名用岗位：求职意向第一个岗位（猎聘简历是候选人视角，无"我方招聘岗位"概念）
+  const job = (vo?.jobWant?.jobTitleNames || [])[0] || vo?.baseInfo?.title || '';
 
   if (!att) {
     throw new Error('该候选人没有附件简历（可能只开放了在线简历）');
@@ -121,9 +135,8 @@ export async function download(page: Page, options: DownloadOptions): Promise<an
   }
 
   // 第 5 步：move 到目标目录并重命名（跨盘符用 copy+unlink）
-  const ts = new Date();
-  const timeStr = `${ts.getFullYear()}${pad(ts.getMonth() + 1)}${pad(ts.getDate())}-${pad(ts.getHours())}${pad(ts.getMinutes())}${pad(ts.getSeconds())}`;
-  const finalName = `猎聘-附件简历-${safeFileBase(name)}-${timeStr}.${ext}`;
+  const timeStr = formatFileTimestamp(new Date());
+  const finalName = `猎聘-附件简历-${buildResumeNamePart(name, job)}-${timeStr}.${ext}`;
   const absPath = join(outDir, finalName);
   try {
     await rename(srcPath, absPath);

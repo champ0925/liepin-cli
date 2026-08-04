@@ -25,9 +25,21 @@ function pad(n: number): string {
   return String(n).padStart(2, '0');
 }
 
+/** 文件名时间戳：2026-08-04 17-45-56（与 boss-cli 统一） */
+function formatFileTimestamp(d: Date): string {
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}-${pad(d.getMinutes())}-${pad(d.getSeconds())}`;
+}
+
 function safeFileBase(name: string): string {
   const t = name.replace(/[/\\?%*:|"<>]/g, '_').trim().slice(0, 64);
   return t.length > 0 ? t : 'candidate';
+}
+
+/** 简历文件名片段：岗位-姓名（岗位缺省时只姓名） */
+function buildResumeNamePart(name: string, job: string): string {
+  const n = safeFileBase(name);
+  const j = job.trim() ? `${safeFileBase(job)}-` : '';
+  return `${j}${n}`;
 }
 
 export async function resume(page: Page, options: ResumeOptions): Promise<any> {
@@ -84,6 +96,8 @@ export async function resume(page: Page, options: ResumeOptions): Promise<any> {
   const result: any = {
     name: base.name || '',
     title: base.title || '',
+    // 文件名用岗位：求职意向第一个岗位（猎聘简历是候选人视角，无"我方招聘岗位"概念）
+    job: (want.jobTitleNames || [])[0] || base.title || '',
     sex: base.sexName || '',
     age: base.age ? `${base.age}岁` : '',
     city: base.dqName || '',
@@ -112,9 +126,8 @@ export async function resume(page: Page, options: ResumeOptions): Promise<any> {
 
   // 落盘 JSON 到 resumes/<日期>/json/
   ensureResumeDirs();
-  const ts = new Date();
-  const timeStr = `${ts.getFullYear()}${pad(ts.getMonth() + 1)}${pad(ts.getDate())}-${pad(ts.getHours())}${pad(ts.getMinutes())}${pad(ts.getSeconds())}`;
-  const jsonName = `猎聘-简历-${safeFileBase(result.name || talentId)}-${timeStr}.json`;
+  const timeStr = formatFileTimestamp(new Date());
+  const jsonName = `猎聘-简历-${buildResumeNamePart(result.name || talentId, result.job)}-${timeStr}.json`;
   const jsonPath = join(RESUME_JSON_DIR, jsonName);
   await writeFile(jsonPath, JSON.stringify(result, null, 2), 'utf-8');
   result.json_file = jsonPath;

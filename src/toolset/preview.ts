@@ -34,6 +34,19 @@ function safeFileBase(name: string): string {
   return t.length > 0 ? t : 'candidate';
 }
 
+/** 文件名时间戳：2026-08-04 17-45-56（与 boss-cli 统一） */
+function formatFileTimestamp(d: Date): string {
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}-${p(d.getMinutes())}-${p(d.getSeconds())}`;
+}
+
+/** 简历文件名片段：岗位-姓名（岗位缺省时只姓名） */
+function buildResumeNamePart(name: string, job: string): string {
+  const n = safeFileBase(name);
+  const j = job.trim() ? `${safeFileBase(job)}-` : '';
+  return `${j}${n}`;
+}
+
 /** 等简历正文渲染稳定：容器可见且文本量/高度连续两次采样一致。 */
 async function waitResumeReady(page: Page, timeoutMs = 15_000): Promise<boolean> {
   const deadline = Date.now() + timeoutMs;
@@ -70,13 +83,15 @@ export async function preview(page: Page, options: PreviewOptions): Promise<any>
 
   ensureResumeDirs();
 
-  // 取姓名用于文件名（复用现有 resume()，不重复解析）
+  // 取姓名+岗位用于文件名（复用现有 resume()，不重复解析）
   let name = '';
+  let job = '';
   try {
     const r = await resume(page, { talentId });
     name = r.name || '';
+    job = r.job || '';
   } catch {
-    /* 取不到姓名就用 id，不影响截图 */
+    /* 取不到就用 id，不影响截图 */
   }
 
   // 导航到简历详情页
@@ -118,10 +133,8 @@ export async function preview(page: Page, options: PreviewOptions): Promise<any>
   await waitResumeReady(page, 8_000);
   await sleepRandom(400, 700);
 
-  const ts = new Date();
-  const pad = (n: number) => String(n).padStart(2, '0');
-  const timeStr = `${ts.getFullYear()}${pad(ts.getMonth() + 1)}${pad(ts.getDate())}-${pad(ts.getHours())}${pad(ts.getMinutes())}${pad(ts.getSeconds())}`;
-  const fileName = `猎聘-在线简历-${safeFileBase(name || talentId)}-${timeStr}.png`;
+  const timeStr = formatFileTimestamp(new Date());
+  const fileName = `猎聘-在线简历-${buildResumeNamePart(name || talentId, job)}-${timeStr}.png`;
   const absPath = join(RESUME_SCREENSHOTS_DIR, fileName);
 
   await page.screenshot({
