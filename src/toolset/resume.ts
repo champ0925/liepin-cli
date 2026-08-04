@@ -55,6 +55,20 @@ export async function resume(page: Page, options: ResumeOptions): Promise<any> {
   const base = vo.baseInfo || {};
   const want = vo.jobWant || {};
 
+  // 附件简历（候选人上传的 PDF/DOCX）：status=1 可直接下载；ask4AttachmentStatus 标记是否需"向TA索要"
+  const att = vo.attachmentVo?.attachmentResume;
+  const attachment = att
+    ? {
+        name: att.name || '',
+        type: att.type || '',
+        size: att.size || '',
+        download_url: att.downloadUrl || '',
+        preview_url: att.previewUrl || '',
+        status: att.status ?? null,
+        ask4_status: vo.attachmentVo?.ask4AttachmentStatus ?? null,
+      }
+    : null;
+
   return {
     name: base.name || '',
     title: base.title || '',
@@ -81,6 +95,7 @@ export async function resume(page: Page, options: ResumeOptions): Promise<any> {
       `${e.eduTimeSpan || ''} ${e.school || ''} / ${e.special || ''} / ${e.degreeName || ''}`.trim()),
     resume_id: String(vo.resId || talentId),
     user_id: String(vo.encodeUsercId || ''),
+    attachment,
   };
 }
 

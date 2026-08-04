@@ -138,9 +138,17 @@ export const RESUME_OCR_DIR =
   process.env.LIEPIN_RESUME_OCR_DIR?.trim() ||
   join(process.cwd(), 'resumes', resumeDateDir(), 'ocr');
 
+/**
+ * 附件简历下载保存目录（候选人上传的 PDF/DOCX）。
+ * 优先 `LIEPIN_RESUME_ATTACHMENTS_DIR`，默认 `resumes/<日期>/attachments/`。
+ */
+export const RESUME_ATTACHMENTS_DIR =
+  process.env.LIEPIN_RESUME_ATTACHMENTS_DIR?.trim() ||
+  join(process.cwd(), 'resumes', resumeDateDir(), 'attachments');
+
 /** 确保简历输出目录存在 */
 export function ensureResumeDirs(): void {
-  for (const dir of [RESUME_SCREENSHOTS_DIR, RESUME_OCR_DIR]) {
+  for (const dir of [RESUME_SCREENSHOTS_DIR, RESUME_OCR_DIR, RESUME_ATTACHMENTS_DIR]) {
     try {
       if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
     } catch {

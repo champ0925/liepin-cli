@@ -23,6 +23,7 @@ import { recommendCommand } from '../toolset/recommend.js';
 import { talentCommand } from '../toolset/talent.js';
 import { resumeCommand } from '../toolset/resume.js';
 import { previewCommand } from '../toolset/preview.js';
+import { downloadCommand } from '../toolset/download.js';
 import { baiduKeysCommand } from '../toolset/baidu_credentials.js';
 import { greetCommand } from '../toolset/greet.js';
 import { joblistCommand } from '../toolset/joblist.js';
@@ -69,6 +70,7 @@ const commands: Command[] = [
   talentCommand,
   resumeCommand,
   previewCommand,
+  downloadCommand,
   baiduKeysCommand,
   greetCommand,
   joblistCommand,
