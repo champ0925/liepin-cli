@@ -35,3 +35,9 @@ coverage/
 # Temporary files
 tmp/
 temp/
+
+# 简历数据（真实候选人信息，绝不提交）
+resumes/
+
+# 探针/临时脚本
+probe_*.mjs

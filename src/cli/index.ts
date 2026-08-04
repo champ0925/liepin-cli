@@ -6,6 +6,8 @@
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { homedir } from 'os';
+import { config as loadEnv } from 'dotenv';
 import {
   ensureBrowserSession,
   getPageRef,
@@ -20,6 +22,8 @@ import { chatmsgCommand } from '../toolset/chatmsg.js';
 import { recommendCommand } from '../toolset/recommend.js';
 import { talentCommand } from '../toolset/talent.js';
 import { resumeCommand } from '../toolset/resume.js';
+import { previewCommand } from '../toolset/preview.js';
+import { baiduKeysCommand } from '../toolset/baidu_credentials.js';
 import { greetCommand } from '../toolset/greet.js';
 import { joblistCommand } from '../toolset/joblist.js';
 import { skillCommand } from '../toolset/skill.js';
@@ -28,6 +32,10 @@ import { skillCommand } from '../toolset/skill.js';
 const pkg = JSON.parse(
   readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'package.json'), 'utf-8'),
 );
+
+/** 启动时加载百度 OCR 等凭证：先 ~/.liepin-cli/.env，再项目目录 .env（后者可覆盖） */
+loadEnv({ path: join(homedir(), '.liepin-cli', '.env') });
+loadEnv();
 
 /** 命令定义 */
 interface Command {
@@ -60,6 +68,8 @@ const commands: Command[] = [
   recommendCommand,
   talentCommand,
   resumeCommand,
+  previewCommand,
+  baiduKeysCommand,
   greetCommand,
   joblistCommand,
   skillCommand,
@@ -104,10 +114,12 @@ function showVersion(): void {
 function parseArgs(args: string[]): { command: string; options: Record<string, any> } {
   let command = '';
   const options: Record<string, any> = {};
+  // --api-key -> apiKey（kebab-case 转 camelCase，与命令参数名匹配）
+  const camel = (k: string) => k.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
-    
+
     if (arg === '--help' || arg === '-h') {
       options.help = true;
     } else if (arg === '--version' || arg === '-v') {
@@ -116,9 +128,9 @@ function parseArgs(args: string[]): { command: string; options: Record<string, a
       // 支持 --key=value（值可含 -- 开头，如 --message=--紧急）
       const eq = arg.indexOf('=');
       if (eq !== -1) {
-        options[arg.slice(2, eq)] = arg.slice(eq + 1);
+        options[camel(arg.slice(2, eq))] = arg.slice(eq + 1);
       } else {
-        const key = arg.slice(2);
+        const key = camel(arg.slice(2));
         const value = args[i + 1];
         if (value !== undefined && !value.startsWith('--')) {
           options[key] = value;

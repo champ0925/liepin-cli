@@ -115,3 +115,36 @@ export function ensureAppDataLayout(): void {
     }
   }
 }
+
+/** 当天日期目录名，如 2026-08-04；可用 LIEPIN_RESUME_DATE_DIR 覆盖（测试用） */
+function resumeDateDir(): string {
+  return process.env.LIEPIN_RESUME_DATE_DIR?.trim() || new Date().toISOString().slice(0, 10);
+}
+
+/**
+ * `preview` 抓取在线简历截图保存目录。
+ * 优先环境变量 `LIEPIN_RESUME_SCREENSHOTS_DIR`（绝对路径，不再追加日期），
+ * 默认存当前工作目录 `resumes/<日期>/screenshots/`。
+ */
+export const RESUME_SCREENSHOTS_DIR =
+  process.env.LIEPIN_RESUME_SCREENSHOTS_DIR?.trim() ||
+  join(process.cwd(), 'resumes', resumeDateDir(), 'screenshots');
+
+/**
+ * 简历截图 OCR 文本保存目录（与截图同名 .txt）。
+ * 优先 `LIEPIN_RESUME_OCR_DIR`，默认 `resumes/<日期>/ocr/`。
+ */
+export const RESUME_OCR_DIR =
+  process.env.LIEPIN_RESUME_OCR_DIR?.trim() ||
+  join(process.cwd(), 'resumes', resumeDateDir(), 'ocr');
+
+/** 确保简历输出目录存在 */
+export function ensureResumeDirs(): void {
+  for (const dir of [RESUME_SCREENSHOTS_DIR, RESUME_OCR_DIR]) {
+    try {
+      if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+    } catch {
+      /* ignore */
+    }
+  }
+}
