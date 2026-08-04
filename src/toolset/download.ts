@@ -2,23 +2,29 @@
  * 猎聘附件简历下载命令
  *
  * 流程：
- *   1. 复用 resume() 拿附件元数据（姓名 / 原始文件名 / status）
- *   2. 导航到简历详情页，开 CDP Page.setDownloadBehavior 指向输出目录
- *   3. 点击页面「下载」按钮（<a class*="download--">），浏览器捕获真实文件落盘
- *   4. 重命名为 猎聘-附件简历-姓名-时间.<ext>
+ *   1. 导航到简历详情页（/resume/detail?resIdEncode=...）
+ *   2. 在简历页上下文调 resume-view 接口拿附件元数据（姓名 / status）
+ *   3. 点击页面「下载」按钮，监听 Chrome 默认下载目录捕获文件
+ *   4. move 到 resumes/<日期>/attachments/ 并重命名
+ *
+ * 为什么不复用 resume()：
+ *   resume() 内部 navigateToLpt('/search') 会先导航到搜索页再调接口，
+ *   download 又要 goto 回简历页，两次导航在新会话里容易卡死。
+ *   直接在简历页调接口（同域，cookie/referer 都对），省一次导航。
  *
  * 为什么不直接 HTTP 下载 downloadUrl：
- *   接口返回的 downloadUrl 是相对路径，直接 fetch/goto 命中不了服务端路由（回首页 HTML），
+ *   接口返回的 downloadUrl 是虚拟路径，直接 fetch/goto 命中不了服务端路由（回首页 HTML），
  *   真实下载是前端 JS 绑在「下载」按钮上的二次请求，只有点击才会触发正确链路。
  */
 
 import { Page } from 'puppeteer-core';
-import { writeFile, stat, rename, readdir, copyFile, unlink } from 'node:fs/promises';
+import { stat, rename, readdir, copyFile, unlink } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import { join, extname } from 'node:path';
 import { homedir } from 'node:os';
-import { ensureResumeDirs, RESUME_ATTACHMENTS_DIR } from '../config.js';
+import { ensureResumeDirs, RESUME_ATTACHMENTS_DIR, BROWSER_USER_DATA_DIR } from '../config.js';
 import { sleepRandom } from '../common/utils.js';
-import { resume } from './resume.js';
+import { LIEPIN_LPT_API, lptFetch } from '../common/lpt-utils.js';
 
 export interface DownloadOptions {
   talentId: string;   // resume_id（resIdEncode）
@@ -44,61 +50,65 @@ export async function download(page: Page, options: DownloadOptions): Promise<an
   ensureResumeDirs();
   const outDir = options.out?.trim() || RESUME_ATTACHMENTS_DIR;
 
-  // 第 1 步：复用 resume() 拿附件元数据
-  const r = await resume(page, { talentId });
-  const att = r.attachment;
+  // 第 1 步：导航到简历详情页
+  const detailUrl = `https://lpt.liepin.com/resume/detail?resIdEncode=${encodeURIComponent(talentId)}&sfrom=R_SEARCH_CONDITION`;
+  await page.goto(detailUrl, { waitUntil: 'networkidle2', timeout: 30_000 });
+  await sleepRandom(1500, 2500);
+
+  // 第 2 步：在简历页上下文调 resume-view 接口拿附件元数据（同域，无需再导航）
+  const form = new URLSearchParams();
+  form.set('pageParamVo', JSON.stringify({ resIdEncode: talentId, sfrom: 'R_SEARCH_CONDITION' }));
+  const data = await lptFetch(page, `${LIEPIN_LPT_API}/api/com.liepin.rresume.usere.pc.resume-view`, { body: form.toString() });
+  if (data.flag !== 1) {
+    throw new Error(`获取简历失败: ${data.msg || data.message || '未知错误'}`);
+  }
+  const vo = data.data?.resumeDetailVo;
+  const att = vo?.attachmentVo?.attachmentResume;
+  const ask4Status = vo?.attachmentVo?.ask4AttachmentStatus;
+  const name = vo?.baseInfo?.name || talentId;
+
   if (!att) {
     throw new Error('该候选人没有附件简历（可能只开放了在线简历）');
   }
   if (att.status !== 1) {
     throw new Error(
-      `附件简历当前不可直接下载（status=${att.status ?? '空'}, ask4_status=${att.ask4_status ?? '空'}），可能需要先「向TA索要」并等对方同意`,
+      `附件简历当前不可直接下载（status=${att.status ?? '空'}, ask4_status=${ask4Status ?? '空'}），可能需要先「向TA索要」并等对方同意`,
     );
   }
 
-  const name = r.name || talentId;
   const origName = att.name || '';
   const ext = (att.type || extname(origName).replace(/^\./, '') || 'pdf').toLowerCase();
 
-  // 第 2 步：记录 Chrome 默认下载目录现有文件（点按钮后对比找新文件）
-  // CDP Page/Browser.setDownloadBehavior 在新版 Chrome 上不生效（文件仍下默认目录），
-  // 所以直接监听默认目录：快照 → 点击 → 轮询新出现的文件。
-  const chromeDlDir = join(homedir(), 'Downloads');
+  // 第 3 步：读 Chrome Preferences 拿真实下载目录（用户可能自定义过）
+  const prefsPath = join(BROWSER_USER_DATA_DIR, 'Default', 'Preferences');
+  let chromeDlDir = join(homedir(), 'Downloads'); // 默认
+  try {
+    const prefs = JSON.parse(readFileSync(prefsPath, 'utf-8'));
+    chromeDlDir = prefs.download?.default_directory || prefs.savefile?.default_directory || chromeDlDir;
+  } catch { /* 读不到就用默认 */ }
+
+  // 快照下载目录现有文件
   const before = new Set(await readdir(chromeDlDir).catch(() => [] as string[]));
 
-  // 第 3 步：导航到简历详情页，等下载按钮渲染
-  const url = `https://lpt.liepin.com/resume/detail?resIdEncode=${encodeURIComponent(talentId)}&sfrom=R_SEARCH_CONDITION`;
-  await page.goto(url, { waitUntil: 'networkidle2', timeout: 30_000 });
-  await sleepRandom(1500, 2500);
+  // 第 4 步：等下载按钮渲染，直接 JS click（探针验证过的方式）
   await page.waitForSelector('a[class*="download--"]', { timeout: 10_000 }).catch(() => {});
-
-  // 第 4 步：点「下载」按钮（先滚动到可见区域，合成点击对视口外元素可能不响应）
   const clicked = await page.evaluate(() => {
     const a = document.querySelector('a[class*="download--"]') as HTMLElement | null;
     if (!a) return false;
-    a.scrollIntoView({ block: 'center', inline: 'nearest' });
+    a.click();
     return true;
   });
   if (!clicked) {
     throw new Error('简历详情页未找到「下载」按钮（可能页面结构变更或该简历无附件）');
   }
-  await sleepRandom(500, 900);
-  // 用 Puppeteer 原生 click（派发完整鼠标事件，比 JS click 更像真人）
-  await page.click('a[class*="download--"]').catch(() => {
-    // 兜底：原生 click 失败再用 JS click
-    return page.evaluate(() => {
-      (document.querySelector('a[class*="download--"]') as HTMLElement | null)?.click();
-    });
-  });
 
-  // 等默认下载目录出现新文件（最多 30s；.crdownload 表示还在下，继续等）
+  // 等下载目录出现新文件（最多 30s；.crdownload 表示还在下，继续等）
   let srcPath = '';
   const deadline = Date.now() + 30_000;
   while (Date.now() < deadline) {
     const now = await readdir(chromeDlDir).catch(() => [] as string[]);
     const fresh = now.filter(f => !before.has(f) && !f.endsWith('.crdownload'));
     if (fresh.length > 0) {
-      // 取最新的那个
       const withTime = await Promise.all(fresh.map(async f => ({ f, t: (await stat(join(chromeDlDir, f))).mtimeMs })));
       withTime.sort((a, b) => b.t - a.t);
       srcPath = join(chromeDlDir, withTime[0].f);
@@ -107,10 +117,10 @@ export async function download(page: Page, options: DownloadOptions): Promise<an
     await sleepRandom(400, 700);
   }
   if (!srcPath) {
-    throw new Error('附件下载超时（30s 内默认下载目录未出现新文件），可能未登录或触发风控');
+    throw new Error(`附件下载超时（30s 内 ${chromeDlDir} 未出现新文件），可能未登录或触发风控`);
   }
 
-  // 第 5 步：从默认下载目录 move 到目标目录并重命名（跨盘符用 copy+unlink）
+  // 第 5 步：move 到目标目录并重命名（跨盘符用 copy+unlink）
   const ts = new Date();
   const timeStr = `${ts.getFullYear()}${pad(ts.getMonth() + 1)}${pad(ts.getDate())}-${pad(ts.getHours())}${pad(ts.getMinutes())}${pad(ts.getSeconds())}`;
   const finalName = `猎聘-附件简历-${safeFileBase(name)}-${timeStr}.${ext}`;
