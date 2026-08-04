@@ -121,7 +121,7 @@ export async function preview(page: Page, options: PreviewOptions): Promise<any>
   const ts = new Date();
   const pad = (n: number) => String(n).padStart(2, '0');
   const timeStr = `${ts.getFullYear()}${pad(ts.getMonth() + 1)}${pad(ts.getDate())}-${pad(ts.getHours())}${pad(ts.getMinutes())}${pad(ts.getSeconds())}`;
-  const fileName = `在线简历-${safeFileBase(name || talentId)}-${timeStr}.png`;
+  const fileName = `猎聘-在线简历-${safeFileBase(name || talentId)}-${timeStr}.png`;
   const absPath = join(RESUME_SCREENSHOTS_DIR, fileName);
 
   await page.screenshot({
