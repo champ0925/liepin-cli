@@ -122,13 +122,34 @@ function resumeDateDir(): string {
 }
 
 /**
+ * 简历输出根目录（resumes/）的父目录。
+ * 从 CLI 安装位置反推工作区根：dist/config.js → 上两级是 liepin-cli/ → 再上一级是 AI-Hiring/。
+ * 这样无论在哪跑命令，文件都统一落到 AI-Hiring/resumes/（跟 boss-cli 输出同级）。
+ * 反推失败（目录结构不符）时回退 process.cwd()。
+ */
+function workspaceRoot(): string {
+  try {
+    // dist/config.js → liepin-cli/ → AI-Hiring/
+    const pkgRoot = join(__dirname, '..');
+    const parent = dirname(pkgRoot);
+    // 校验：pkgRoot 应该是 liepin-cli/（含 package.json）
+    if (existsSync(join(pkgRoot, 'package.json'))) {
+      return parent;
+    }
+  } catch { /* ignore */ }
+  return process.cwd();
+}
+
+const RESUME_ROOT = join(workspaceRoot(), 'resumes', resumeDateDir());
+
+/**
  * `preview` 抓取在线简历截图保存目录。
  * 优先环境变量 `LIEPIN_RESUME_SCREENSHOTS_DIR`（绝对路径，不再追加日期），
- * 默认存当前工作目录 `resumes/<日期>/screenshots/`。
+ * 默认存工作区根 `resumes/<日期>/screenshots/`。
  */
 export const RESUME_SCREENSHOTS_DIR =
   process.env.LIEPIN_RESUME_SCREENSHOTS_DIR?.trim() ||
-  join(process.cwd(), 'resumes', resumeDateDir(), 'screenshots');
+  join(RESUME_ROOT, 'screenshots');
 
 /**
  * 简历截图 OCR 文本保存目录（与截图同名 .txt）。
@@ -136,7 +157,7 @@ export const RESUME_SCREENSHOTS_DIR =
  */
 export const RESUME_OCR_DIR =
   process.env.LIEPIN_RESUME_OCR_DIR?.trim() ||
-  join(process.cwd(), 'resumes', resumeDateDir(), 'ocr');
+  join(RESUME_ROOT, 'ocr');
 
 /**
  * 附件简历下载保存目录（候选人上传的 PDF/DOCX）。
@@ -144,7 +165,7 @@ export const RESUME_OCR_DIR =
  */
 export const RESUME_ATTACHMENTS_DIR =
   process.env.LIEPIN_RESUME_ATTACHMENTS_DIR?.trim() ||
-  join(process.cwd(), 'resumes', resumeDateDir(), 'attachments');
+  join(RESUME_ROOT, 'attachments');
 
 /** 确保简历输出目录存在 */
 export function ensureResumeDirs(): void {

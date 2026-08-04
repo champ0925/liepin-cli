@@ -72,16 +72,24 @@ export async function download(page: Page, options: DownloadOptions): Promise<an
   await sleepRandom(1500, 2500);
   await page.waitForSelector('a[class*="download--"]', { timeout: 10_000 }).catch(() => {});
 
-  // 第 4 步：点「下载」按钮
+  // 第 4 步：点「下载」按钮（先滚动到可见区域，合成点击对视口外元素可能不响应）
   const clicked = await page.evaluate(() => {
     const a = document.querySelector('a[class*="download--"]') as HTMLElement | null;
     if (!a) return false;
-    a.click();
+    a.scrollIntoView({ block: 'center', inline: 'nearest' });
     return true;
   });
   if (!clicked) {
     throw new Error('简历详情页未找到「下载」按钮（可能页面结构变更或该简历无附件）');
   }
+  await sleepRandom(500, 900);
+  // 用 Puppeteer 原生 click（派发完整鼠标事件，比 JS click 更像真人）
+  await page.click('a[class*="download--"]').catch(() => {
+    // 兜底：原生 click 失败再用 JS click
+    return page.evaluate(() => {
+      (document.querySelector('a[class*="download--"]') as HTMLElement | null)?.click();
+    });
+  });
 
   // 等默认下载目录出现新文件（最多 30s；.crdownload 表示还在下，继续等）
   let srcPath = '';
