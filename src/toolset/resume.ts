@@ -8,7 +8,10 @@
  */
 
 import { Page } from 'puppeteer-core';
+import { writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { LIEPIN_LPT_API, lptFetch, navigateToLpt } from '../common/lpt-utils.js';
+import { ensureResumeDirs, RESUME_JSON_DIR } from '../config.js';
 
 export interface ResumeOptions {
   talentId: string;
@@ -16,6 +19,15 @@ export interface ResumeOptions {
 
 function joinLines(items: any[], fmt: (it: any) => string): string {
   return (items || []).map(fmt).filter(Boolean).join('\n');
+}
+
+function pad(n: number): string {
+  return String(n).padStart(2, '0');
+}
+
+function safeFileBase(name: string): string {
+  const t = name.replace(/[/\\?%*:|"<>]/g, '_').trim().slice(0, 64);
+  return t.length > 0 ? t : 'candidate';
 }
 
 export async function resume(page: Page, options: ResumeOptions): Promise<any> {
@@ -69,7 +81,7 @@ export async function resume(page: Page, options: ResumeOptions): Promise<any> {
       }
     : null;
 
-  return {
+  const result: any = {
     name: base.name || '',
     title: base.title || '',
     sex: base.sexName || '',
@@ -97,6 +109,17 @@ export async function resume(page: Page, options: ResumeOptions): Promise<any> {
     user_id: String(vo.encodeUsercId || ''),
     attachment,
   };
+
+  // 落盘 JSON 到 resumes/<日期>/json/
+  ensureResumeDirs();
+  const ts = new Date();
+  const timeStr = `${ts.getFullYear()}${pad(ts.getMonth() + 1)}${pad(ts.getDate())}-${pad(ts.getHours())}${pad(ts.getMinutes())}${pad(ts.getSeconds())}`;
+  const jsonName = `猎聘-简历-${safeFileBase(result.name || talentId)}-${timeStr}.json`;
+  const jsonPath = join(RESUME_JSON_DIR, jsonName);
+  await writeFile(jsonPath, JSON.stringify(result, null, 2), 'utf-8');
+  result.json_file = jsonPath;
+
+  return result;
 }
 
 /** 简历命令定义 */

@@ -167,9 +167,17 @@ export const RESUME_ATTACHMENTS_DIR =
   process.env.LIEPIN_RESUME_ATTACHMENTS_DIR?.trim() ||
   join(RESUME_ROOT, 'attachments');
 
+/**
+ * 简历结构化 JSON 保存目录（resume 命令返回的完整数据）。
+ * 优先 `LIEPIN_RESUME_JSON_DIR`，默认 `resumes/<日期>/json/`。
+ */
+export const RESUME_JSON_DIR =
+  process.env.LIEPIN_RESUME_JSON_DIR?.trim() ||
+  join(RESUME_ROOT, 'json');
+
 /** 确保简历输出目录存在 */
 export function ensureResumeDirs(): void {
-  for (const dir of [RESUME_SCREENSHOTS_DIR, RESUME_OCR_DIR, RESUME_ATTACHMENTS_DIR]) {
+  for (const dir of [RESUME_SCREENSHOTS_DIR, RESUME_OCR_DIR, RESUME_ATTACHMENTS_DIR, RESUME_JSON_DIR]) {
     try {
       if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
     } catch {
