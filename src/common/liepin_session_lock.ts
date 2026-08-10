@@ -7,6 +7,8 @@ import { CACHE_DIR, ensureAppDataLayout } from '../config.js';
 const SESSION_LOCK_FILE = join(CACHE_DIR, 'session.lock');
 const SESSION_LOCK_WAIT_MAX_MS = 30_000;
 const SESSION_LOCK_POLL_MS = 250;
+/** 锁持有超过该时长视为"持有者卡死"，强制接管（防僵尸锁死锁整条批量链路） */
+const SESSION_LOCK_STALE_MAX_MS = 5 * 60 * 1000;
 
 type SessionLockMeta = {
   pid: number;
@@ -68,13 +70,21 @@ async function clearStaleSessionLockIfNeeded(): Promise<void> {
     await rm(SESSION_LOCK_FILE, { force: true }).catch(() => {});
     return;
   }
+  // 锁持有超过阈值：无论进程是否存活，一律视为卡死，强制接管
+  const ageMs = Date.now() - meta.createdAt;
+  if (ageMs > SESSION_LOCK_STALE_MAX_MS) {
+    await rm(SESSION_LOCK_FILE, { force: true }).catch(() => {});
+    return;
+  }
   if (meta.hostname !== hostname()) {
     if (!(await processExists(meta.pid))) {
       await rm(SESSION_LOCK_FILE, { force: true }).catch(() => {});
     }
     return;
   }
-  if (await processExists(meta.pid)) return;
+  if (await processExists(meta.pid)) {
+    return;
+  }
   await rm(SESSION_LOCK_FILE, { force: true }).catch(() => {});
 }
 
