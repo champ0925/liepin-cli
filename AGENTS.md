@@ -89,13 +89,16 @@ await page.evaluate(async (url, body) => {
 
 | 命令 | 说明 |
 |------|------|
+| `login` / `status` | 登录 / 登录态检查 |
 | `search` | 搜索人才 |
 | `chatlist` | 查看聊天列表 |
 | `chatmsg` | 查看与某候选人的聊天记录（入参为对方 imId） |
+| `chat-resume-list` | 沟通页「有简历」分类列表（含 resume_id；可选职位过滤 / `--deep`） |
 | `recommend` | 查看推荐候选人 |
 | `talent` | 查看人才库 |
-| `resume` | 查看简历详情（入参为 resume_id） |
-| `greet` | 向候选人打招呼（一键沟通，使用职位预设招呼语；入参为候选人 user_id） |
+| `resume` / `preview` / `download` | 简历详情 / 在线截图 / 附件下载 |
+| `greet` | 向候选人打招呼（可 `--message`；无独立二次回复 `send`） |
+| `request-attachment-resume` / `agree-resume` | 索要 / 同意附件简历 |
 | `joblist` | 查看职位列表 |
 
 ## 反检测策略

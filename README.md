@@ -1,16 +1,16 @@
 # liepin-cli — 猎聘招聘者端自动化 CLI | 人才搜索 · 简历查看 · AI Agent 友好
 
-[![npm version](https://img.shields.io/npm/v/@viyzhu/liepin-cli)](https://www.npmjs.com/package/@viyzhu/liepin-cli)
-[![npm downloads](https://img.shields.io/npm/dm/@viyzhu/liepin-cli)](https://www.npmjs.com/package/@viyzhu/liepin-cli)
+[![npm version](https://img.shields.io/npm/v/@champ0925/liepin-cli)](https://www.npmjs.com/package/@champ0925/liepin-cli)
+[![npm downloads](https://img.shields.io/npm/dm/@champ0925/liepin-cli)](https://www.npmjs.com/package/@champ0925/liepin-cli)
 [![license: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue)](./LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/Viy1204/liepin-cli)](https://github.com/Viy1204/liepin-cli)
 
-**liepin-cli**（`@viyzhu/liepin-cli`）是开源的 **猎聘招聘者端（lpt.liepin.com）自动化命令行工具**。基于 Puppeteer / CDP 协议驱动本机 Chrome，把招聘者端的核心操作搬进终端：**人才搜索**、**简历查看**、**推荐 / 人才库管理**、**主动打招呼**、**聊天记录查看**、**职位管理**。
+**liepin-cli**（`@champ0925/liepin-cli`，当前源码版本 `0.2.0`）是开源的 **猎聘招聘者端（lpt.liepin.com）自动化命令行工具**。基于 Puppeteer / CDP 协议驱动本机 Chrome，把招聘者端的核心操作搬进终端：**人才搜索**、**简历查看**、**推荐 / 人才库管理**、**主动打招呼**、**聊天记录查看**、**职位管理**。
 
 每条命令都设计为无状态、单步可重入，输出结构化文本；批量筛选、多步流程由调用方（脚本或 Claude / GPT / Gemini 等 AI Agent）循环编排，搭建半自动化招聘流水线。
 
 ```bash
-npm install -g @viyzhu/liepin-cli
+npm install -g @champ0925/liepin-cli
 liepin help
 ```
 
@@ -41,7 +41,7 @@ liepin help
 **要求**：Node.js ≥ 20，本机已安装 Chrome / Chromium。
 
 ```bash
-npm install -g @viyzhu/liepin-cli
+npm install -g @champ0925/liepin-cli
 liepin help
 ```
 
@@ -68,16 +68,25 @@ liepin help
 
 | 命令 | 说明 |
 | --- | --- |
+| `liepin login` | 打开招聘者端登录（扫码后浏览器会话可复用） |
+| `liepin status` | 检查登录态（结构化输出；可加 `--json`） |
 | `liepin search <关键词>` | 搜索人才 |
 | `liepin chatlist` | 查看聊天列表 |
 | `liepin chatmsg <对方imId>` | 查看与某候选人的聊天记录 |
+| `liepin chat-resume-list [职位过滤] [--deep]` | 沟通页「有简历」分类列表（含 `resume_id`） |
 | `liepin recommend` | 查看推荐候选人 |
 | `liepin talent` | 查看人才库 |
-| `liepin resume <简历ID>` | 查看简历详情（传 search / recommend / talent 返回的 resume_id） |
-| `liepin greet <resume_id 或 user_id> [--ejobId <职位ID>] [--message <消息>]` | **主动打招呼**：发起沟通，传 `resume_id` 时可补发自定义消息 |
+| `liepin resume <简历ID>` | 查看简历详情（传 search / recommend / talent / chat-resume-list 返回的 resume_id） |
+| `liepin preview <简历ID>` | 在线简历截图（可选 OCR） |
+| `liepin download <简历ID>` | 下载附件简历到 `resumes/` |
+| `liepin greet <resume_id 或 user_id> [--ejobId <职位ID>] [--message <消息>]` | **主动打招呼**：发起沟通；传 `resume_id` 时可补发自定义消息 |
+| `liepin request-attachment-resume <简历ID>` | 向指定候选人索要附件简历 |
+| `liepin agree-resume <简历ID>` | 同意对方附件简历请求 |
 | `liepin joblist` | 查看职位列表 |
 
 完整用法与参数：`liepin help`
+
+> **已知限制**：没有独立的 `send` / 按姓名 `chat` 命令。已建立会话后的二次回复尚未实现；发消息仅能通过 `greet ... --message` 在打招呼时一并发送。与 boss-cli 的 `chat` + `send` 不对齐。
 
 ---
 

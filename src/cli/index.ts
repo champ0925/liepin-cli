@@ -29,6 +29,7 @@ import { greetCommand } from '../toolset/greet.js';
 import { joblistCommand } from '../toolset/joblist.js';
 import { skillCommand } from '../toolset/skill.js';
 import { requestAttachmentResumeCommand, agreeResumeCommand } from '../toolset/attachment_action.js';
+import { chatResumeListCommand } from '../toolset/chat_resume_list.js';
 
 /** 从包根 package.json 读取版本号（dist/cli/index.js -> ../../package.json） */
 const pkg = JSON.parse(
@@ -78,6 +79,7 @@ const commands: Command[] = [
   skillCommand,
   requestAttachmentResumeCommand,
   agreeResumeCommand,
+  chatResumeListCommand,
 ];
 
 /** 不加会话锁的命令：login 要留浏览器等用户扫码，status 是只读检查 */
@@ -106,6 +108,8 @@ ${commands.map(cmd => `  ${cmd.name.padEnd(15)} ${cmd.description}`).join('\n')}
   liepin search 前端工程师 --city 北京 --experience 3-5年
   liepin resume <简历ID>          # 简历ID 取自 search 结果的 resume_id
   liepin chatlist
+  liepin chat-resume-list                   # 沟通页「有简历」列表
+  liepin chat-resume-list 法务 --deep       # 按职位过滤 + 深度补查 resume_id
   liepin recommend
 `);
 }

@@ -19,7 +19,23 @@ test('无参数: 显示 help，列出所有命令', async () => {
   const { stdout } = await exec('node', [CLI]);
   assert.match(stdout, /skill/);
   assert.match(stdout, /--json/);
-  for (const cmd of ['login', 'search', 'chatlist', 'chatmsg', 'recommend', 'talent', 'resume', 'greet', 'joblist']) {
+  for (const cmd of [
+    'login',
+    'status',
+    'search',
+    'chatlist',
+    'chatmsg',
+    'chat-resume-list',
+    'recommend',
+    'talent',
+    'resume',
+    'preview',
+    'download',
+    'greet',
+    'joblist',
+    'request-attachment-resume',
+    'agree-resume',
+  ]) {
     assert.match(stdout, new RegExp(`^\\s+${cmd}\\s+`, 'm'), `缺少命令: ${cmd}`);
   }
 });

@@ -11,10 +11,13 @@ description: >-
 
 liepin-cli 是猎聘招聘者端（lpt.liepin.com）自动化命令行工具，支持：
 - 人才搜索和筛选
-- 简历详情查看
+- 简历详情查看 / 在线简历截图 / 附件简历下载
 - 候选人管理（推荐 / 人才库）
-- 聊天列表与聊天记录
+- 聊天列表、聊天记录、沟通页「有简历」列表（`chat-resume-list`）
+- 主动打招呼（`greet`）；索要/同意附件简历
 - 职位列表浏览
+
+> **限制**：无独立 `send` 命令；已建会话二次回复未实现。发消息仅 `greet --message`。
 
 ## 环境要求
 
@@ -64,6 +67,23 @@ node /tmp/liepin-cli/dist/cli/index.js chatlist
 
 # 查看与某候选人的聊天记录（对方imId = chatlist 结果里的 im_id）
 node /tmp/liepin-cli/dist/cli/index.js chatmsg <对方imId>
+
+# 沟通页「有简历」分类（含 resume_id，可按职位过滤；--deep 补查消息历史）
+node /tmp/liepin-cli/dist/cli/index.js chat-resume-list
+node /tmp/liepin-cli/dist/cli/index.js chat-resume-list 法务 --deep
+```
+
+### 简历附件
+```bash
+# 在线简历截图
+node /tmp/liepin-cli/dist/cli/index.js preview <简历ID>
+
+# 下载附件简历
+node /tmp/liepin-cli/dist/cli/index.js download <简历ID>
+
+# 索要 / 同意附件简历（需已在对应沟通上下文）
+node /tmp/liepin-cli/dist/cli/index.js request-attachment-resume
+node /tmp/liepin-cli/dist/cli/index.js agree-resume
 ```
 
 ## 命令参数

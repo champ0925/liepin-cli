@@ -88,9 +88,15 @@ export async function lptFetch(page: Page, url: string, opts: { body?: string; c
   return data;
 }
 
-/** 导航到 LPT 页面 */
+/** 导航到 LPT 页面（已在目标路径时跳过刷新，避免右侧短暂空白） */
 export async function navigateToLpt(page: Page, path: string = '/recommend', waitSeconds: number = 3): Promise<void> {
   const url = `https://lpt.liepin.com${path}`;
+  const currentUrl = page.url();
+  // 已在目标页面：只等待，不刷新
+  if (currentUrl === url || currentUrl.startsWith(url + '?') || currentUrl.startsWith(url + '#')) {
+    await sleep(waitSeconds * 1000);
+    return;
+  }
   await page.goto(url, { waitUntil: 'networkidle2' });
   await sleep(waitSeconds * 1000);
 }
